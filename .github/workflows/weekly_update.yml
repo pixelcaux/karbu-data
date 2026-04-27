@@ -1,1 +1,38 @@
+name: Mise à jour hebdomadaire stations
 
+on:
+  schedule:
+    - cron: '0 3 * * 1'   # Chaque lundi à 3h du matin
+  workflow_dispatch:        # Permet de lancer manuellement depuis GitHub
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Installer les dépendances
+        run: pip install -r requirements.txt
+
+      - name: Générer le fichier statique
+        run: python generate_static.py --output json
+
+      - name: Compresser le fichier
+        run: gzip -9 -f stations_static.json
+
+      - name: Commit et push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add stations_static.json.gz
+          git diff --cached --quiet || git commit -m "Data: mise à jour stations $(date +'%Y-%m-%d')"
+          git push
