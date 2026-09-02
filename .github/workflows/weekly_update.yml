@@ -1,14 +1,17 @@
-name: Mise à jour hebdomadaire stations
+name: Mise a jour quotidienne stations
 
 on:
   schedule:
-    - cron: '0 3 * * 1'   # Chaque lundi à 3h du matin
+    - cron: '0 3 * * *'   # Tous les jours a 3h UTC
   workflow_dispatch:        # Permet de lancer manuellement depuis GitHub
+
+permissions:
+  contents: write
 
 jobs:
   generate:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
 
     steps:
       - name: Checkout repo
@@ -20,19 +23,22 @@ jobs:
           python-version: '3.11'
           cache: 'pip'
 
-      - name: Installer les dépendances
+      - name: Installer les dependances
         run: pip install -r requirements.txt
 
-      - name: Générer le fichier statique
+      - name: Generer le fichier statique carburants
         run: python generate_static.py --output json
 
-      - name: Compresser le fichier
+      - name: Compresser le fichier carburants
         run: gzip -9 -f stations_static.json
+
+      - name: Generer le fichier statique bornes electriques
+        run: python generate_electric_static.py
 
       - name: Commit et push
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add stations_static.json.gz
-          git diff --cached --quiet || git commit -m "Data: mise à jour stations $(date +'%Y-%m-%d')"
+          git add stations_static.json.gz stations_electrique_static.json.gz
+          git diff --cached --quiet || git commit -m "Data: mise a jour stations $(date +'%Y-%m-%d')"
           git push
